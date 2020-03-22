@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"image"
 
+	candles "github.com/reaalkhalil/cb-candles"
 	. "github.com/reaalkhalil/termui/v3"
 )
 
@@ -21,6 +22,7 @@ type Plot struct {
 	Data       [][]float64
 	DataLabels []string
 	MaxVal     float64
+	MinVal     float64
 
 	LineColors []Color
 	AxesColor  Color // TODO
@@ -46,6 +48,8 @@ const (
 	LineChart PlotType = iota
 	ScatterPlot
 	CandleStickPlot
+	LineChartScaled
+	ScatterPlotScaled
 )
 
 type PlotMarker uint
@@ -77,7 +81,7 @@ func NewPlot() *Plot {
 	}
 }
 
-func (self *Plot) renderBraille(buf *Buffer, drawArea image.Rectangle, maxVal float64) {
+func (self *Plot) renderBraille(buf *Buffer, drawArea image.Rectangle, minVal, maxVal float64) {
 	canvas := NewCanvas()
 	canvas.Rectangle = drawArea
 
@@ -86,6 +90,19 @@ func (self *Plot) renderBraille(buf *Buffer, drawArea image.Rectangle, maxVal fl
 		for i, line := range self.Data {
 			for j, val := range line {
 				height := int((val / maxVal) * float64(drawArea.Dy()-1))
+				canvas.SetPoint(
+					image.Pt(
+						(drawArea.Min.X+(j*self.HorizontalScale))*2,
+						(drawArea.Max.Y-height-1)*4,
+					),
+					SelectColor(self.LineColors, i),
+				)
+			}
+		}
+	case ScatterPlotScaled:
+		for i, line := range self.Data {
+			for j, val := range line {
+				height := int(((val - minVal) / maxVal) * float64(drawArea.Dy()-1))
 				canvas.SetPoint(
 					image.Pt(
 						(drawArea.Min.X+(j*self.HorizontalScale))*2,
@@ -114,30 +131,69 @@ func (self *Plot) renderBraille(buf *Buffer, drawArea image.Rectangle, maxVal fl
 				previousHeight = height
 			}
 		}
+	case LineChartScaled:
+		for i, line := range self.Data {
+			previousHeight := int((line[1] / maxVal) * float64(drawArea.Dy()-1))
+			for j, val := range line[1:] {
+				height := int(((val - minVal) / maxVal) * float64(drawArea.Dy()-1))
+				canvas.SetLine(
+					image.Pt(
+						(drawArea.Min.X+(j*self.HorizontalScale))*2,
+						(drawArea.Max.Y-previousHeight-1)*4,
+					),
+					image.Pt(
+						(drawArea.Min.X+((j+1)*self.HorizontalScale))*2,
+						(drawArea.Max.Y-height-1)*4,
+					),
+					SelectColor(self.LineColors, i),
+				)
+				previousHeight = height
+			}
+		}
 	}
 
 	canvas.Draw(buf)
 }
 
-func (self *Plot) renderDot(buf *Buffer, drawArea image.Rectangle, maxVal float64) {
+func (self *Plot) renderDot(buf *Buffer, drawArea image.Rectangle, minVal, maxVal float64) {
 	switch self.PlotType {
-	case ScatterPlot:
+	case CandleStickPlot:
 		var cc []candles.Candle
 		for i, d := range self.Data {
 			if len(cc) == 0 {
 				cc = make([]candles.Candle, len(d))
 			}
-				for i, d := range self.Data {
-					switch i {
-					case 0: // OPEN
-					cc[]
+			for j, n := range d {
+				switch i {
+				case 0:
+					cc[j].Open = n
+				case 1:
+					cc[j].High = n
+				case 2:
+					cc[j].Low = n
+				case 3:
+					cc[j].Close = n
 				}
 			}
 		}
 
+	case ScatterPlot:
 		for i, line := range self.Data {
 			for j, val := range line {
 				height := int((val / maxVal) * float64(drawArea.Dy()-1))
+				point := image.Pt(drawArea.Min.X+(j*self.HorizontalScale), drawArea.Max.Y-1-height)
+				if point.In(drawArea) {
+					buf.SetCell(
+						NewCell(self.DotMarkerRune, NewStyle(SelectColor(self.LineColors, i))),
+						point,
+					)
+				}
+			}
+		}
+	case ScatterPlotScaled:
+		for i, line := range self.Data {
+			for j, val := range line {
+				height := int(((val - minVal) / maxVal) * float64(drawArea.Dy()-1))
 				point := image.Pt(drawArea.Min.X+(j*self.HorizontalScale), drawArea.Max.Y-1-height)
 				if point.In(drawArea) {
 					buf.SetCell(
@@ -158,10 +214,21 @@ func (self *Plot) renderDot(buf *Buffer, drawArea image.Rectangle, maxVal float6
 				)
 			}
 		}
+	case LineChartScaled:
+		for i, line := range self.Data {
+			for j := 0; j < len(line) && j*self.HorizontalScale < drawArea.Dx(); j++ {
+				val := line[j]
+				height := int(((val - minVal) / maxVal) * float64(drawArea.Dy()-1))
+				buf.SetCell(
+					NewCell(self.DotMarkerRune, NewStyle(SelectColor(self.LineColors, i))),
+					image.Pt(drawArea.Min.X+(j*self.HorizontalScale), drawArea.Max.Y-1-height),
+				)
+			}
+		}
 	}
 }
 
-func (self *Plot) plotAxes(buf *Buffer, maxVal float64) {
+func (self *Plot) plotAxes(buf *Buffer, minVal, maxVal float64) {
 	// draw origin cell
 	buf.SetCell(
 		NewCell(BOTTOM_LEFT, NewStyle(ColorWhite)),
@@ -202,10 +269,10 @@ func (self *Plot) plotAxes(buf *Buffer, maxVal float64) {
 		x += (len(label) + xAxisLabelsGap) * self.HorizontalScale
 	}
 	// draw y axis labels
-	verticalScale := maxVal / float64(self.Inner.Dy()-xAxisLabelsHeight-1)
+	verticalScale := (maxVal - minVal) / float64(self.Inner.Dy()-xAxisLabelsHeight-1)
 	for i := 0; i*(yAxisLabelsGap+1) < self.Inner.Dy()-1; i++ {
 		buf.SetString(
-			fmt.Sprintf("%.2f", float64(i)*verticalScale*(yAxisLabelsGap+1)),
+			fmt.Sprintf("%.2f", minVal+float64(i)*verticalScale*(yAxisLabelsGap+1)),
 			NewStyle(ColorWhite),
 			image.Pt(self.Inner.Min.X, self.Inner.Max.Y-(i*(yAxisLabelsGap+1))-2),
 		)
@@ -216,8 +283,12 @@ func (self *Plot) Draw(buf *Buffer) {
 	self.Block.Draw(buf)
 
 	maxVal := self.MaxVal
+	minVal := self.MinVal
 	if maxVal == 0 {
 		maxVal, _ = GetMaxFloat64From2dSlice(self.Data)
+	}
+	if minVal == 0 {
+		minVal, _ = GetMinFloat64From2dSlice(self.Data)
 	}
 
 	if self.ShowAxes {
@@ -234,8 +305,8 @@ func (self *Plot) Draw(buf *Buffer) {
 
 	switch self.Marker {
 	case MarkerBraille:
-		self.renderBraille(buf, drawArea, maxVal)
+		self.renderBraille(buf, drawArea, minVal, maxVal)
 	case MarkerDot:
-		self.renderDot(buf, drawArea, maxVal)
+		self.renderDot(buf, drawArea, minVal, maxVal)
 	}
 }
