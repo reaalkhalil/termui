@@ -9,6 +9,7 @@ import (
 	candles "github.com/reaalkhalil/cb-candles"
 	. "github.com/reaalkhalil/termui"
 	"image"
+	"math"
 )
 
 // Plot has two modes: line(default) and scatter.
@@ -154,6 +155,18 @@ func (self *Plot) renderBraille(buf *Buffer, drawArea image.Rectangle, minVal, m
 	canvas.Draw(buf)
 }
 
+const (
+	CSStick            = '│'
+	CSCandle           = '┃'
+	CSHalfTop          = '╽'
+	CSHalfBottom       = '╿'
+	CSHalfCandleTop    = '╻'
+	CSHalfCandleBottom = '╹'
+	CSHalfStickTop     = '╷'
+	CSHalfStickBottom  = '╵'
+	CSNothing          = ' '
+)
+
 func (self *Plot) renderDot(buf *Buffer, drawArea image.Rectangle, minVal, maxVal float64) {
 	switch self.PlotType {
 	case CandleStickPlot:
@@ -172,6 +185,33 @@ func (self *Plot) renderDot(buf *Buffer, drawArea image.Rectangle, minVal, maxVa
 					cc[j].Low = n
 				case 3:
 					cc[j].Close = n
+				}
+			}
+		}
+
+		for j, c := range cc {
+			llH := ((c.Low - minVal) / (maxVal - minVal)) * float64(drawArea.Dy()-1)
+			uuH := ((c.High - minVal) / (maxVal - minVal)) * float64(drawArea.Dy()-1)
+			lH := ((math.Min(c.Open, c.Close) - minVal) / (maxVal - minVal)) * float64(drawArea.Dy()-1)
+			uH := ((math.Max(c.Open, c.Close) - minVal) / (maxVal - minVal)) * float64(drawArea.Dy()-1)
+
+			for cy := drawArea.Min.Y - 1; cy < drawArea.Max.Y; cy++ {
+				color := ColorRed
+				if c.Close > c.Open {
+					color = ColorGreen
+				}
+
+				ch := renderCandleAt(llH, uuH, lH, uH, drawArea.Max.Y-1-cy)
+				if ch == CSNothing {
+					color = ColorWhite
+				}
+
+				point := image.Pt(drawArea.Min.X+(j*self.HorizontalScale), cy)
+				if point.In(drawArea) {
+					buf.SetCell(
+						NewCell(ch, NewStyle(color)),
+						point,
+					)
 				}
 			}
 		}
@@ -225,6 +265,54 @@ func (self *Plot) renderDot(buf *Buffer, drawArea image.Rectangle, minVal, maxVa
 			}
 		}
 	}
+}
+
+func renderCandleAt(llH, uuH, lH, uH float64, heightUnit int) rune {
+	heightUnit64 := float64(heightUnit)
+
+	scaledTopStick := uuH
+	scaledTopCandle := uH
+	scaledBottomStick := llH
+	scaledBottomCandle := lH
+
+	if math.Ceil(scaledTopStick) >= heightUnit64 && heightUnit64 >= math.Floor(scaledTopCandle) {
+		if scaledTopCandle-heightUnit64 > 0.75 {
+			return CSCandle
+		} else if (scaledTopCandle - heightUnit64) > 0.25 {
+			if (scaledTopStick - heightUnit64) > 0.75 {
+				return CSHalfTop
+			}
+			return CSHalfCandleTop
+		} else {
+			if (scaledTopStick - heightUnit64) > 0.75 {
+				return CSStick
+			} else if (scaledTopStick - heightUnit64) > 0.25 {
+				return CSHalfStickTop
+			} else {
+				return CSNothing
+			}
+		}
+	} else if math.Floor(scaledTopCandle) >= heightUnit64 && heightUnit64 >= math.Ceil(scaledBottomCandle) {
+		return CSCandle
+	} else if math.Ceil(scaledBottomCandle) >= heightUnit64 && heightUnit64 >= math.Floor(scaledBottomStick) {
+		if (scaledBottomCandle - heightUnit64) < 0.25 {
+			return CSCandle
+		} else if (scaledBottomCandle - heightUnit64) < 0.75 {
+			if (scaledBottomStick - heightUnit64) < 0.25 {
+				return CSHalfBottom
+			}
+			return CSHalfCandleBottom
+		} else {
+			if (scaledBottomStick - heightUnit64) < 0.25 {
+				return CSStick
+			} else if (scaledBottomStick - heightUnit64) < 0.75 {
+				return CSHalfStickBottom
+			} else {
+				return CSNothing
+			}
+		}
+	}
+	return CSNothing
 }
 
 func (self *Plot) plotAxes(buf *Buffer, minVal, maxVal float64) {
