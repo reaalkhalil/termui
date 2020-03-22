@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"image"
 
-	. "github.com/gizak/termui/v3"
+	. "github.com/reaalkhalil/termui/v3"
 )
 
 // Plot has two modes: line(default) and scatter.
@@ -45,6 +45,7 @@ type PlotType uint
 const (
 	LineChart PlotType = iota
 	ScatterPlot
+	CandleStickPlot
 )
 
 type PlotMarker uint
@@ -121,6 +122,19 @@ func (self *Plot) renderBraille(buf *Buffer, drawArea image.Rectangle, maxVal fl
 func (self *Plot) renderDot(buf *Buffer, drawArea image.Rectangle, maxVal float64) {
 	switch self.PlotType {
 	case ScatterPlot:
+		var cc []candles.Candle
+		for i, d := range self.Data {
+			if len(cc) == 0 {
+				cc = make([]candles.Candle, len(d))
+			}
+				for i, d := range self.Data {
+					switch i {
+					case 0: // OPEN
+					cc[]
+				}
+			}
+		}
+
 		for i, line := range self.Data {
 			for j, val := range line {
 				height := int((val / maxVal) * float64(drawArea.Dy()-1))
