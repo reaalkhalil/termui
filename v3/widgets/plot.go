@@ -292,7 +292,7 @@ func (self *Plot) Draw(buf *Buffer) {
 	}
 
 	if self.ShowAxes {
-		self.plotAxes(buf, maxVal)
+		self.plotAxes(buf, minVal, maxVal)
 	}
 
 	drawArea := self.Inner
