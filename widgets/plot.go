@@ -6,10 +6,9 @@ package widgets
 
 import (
 	"fmt"
-	"image"
-
 	candles "github.com/reaalkhalil/cb-candles"
 	. "github.com/reaalkhalil/termui"
+	"image"
 )
 
 // Plot has two modes: line(default) and scatter.
@@ -133,9 +132,9 @@ func (self *Plot) renderBraille(buf *Buffer, drawArea image.Rectangle, minVal, m
 		}
 	case LineChartScaled:
 		for i, line := range self.Data {
-			previousHeight := int((line[1] / maxVal) * float64(drawArea.Dy()-1))
+			previousHeight := int((line[1] - minVal) / (maxVal - minVal) * float64(drawArea.Dy()-1))
 			for j, val := range line[1:] {
-				height := int(((val - minVal) / maxVal) * float64(drawArea.Dy()-1))
+				height := int((val - minVal) / (maxVal - minVal) * float64(drawArea.Dy()-1))
 				canvas.SetLine(
 					image.Pt(
 						(drawArea.Min.X+(j*self.HorizontalScale))*2,
@@ -193,7 +192,7 @@ func (self *Plot) renderDot(buf *Buffer, drawArea image.Rectangle, minVal, maxVa
 	case ScatterPlotScaled:
 		for i, line := range self.Data {
 			for j, val := range line {
-				height := int(((val - minVal) / maxVal) * float64(drawArea.Dy()-1))
+				height := int(((val - minVal) / (maxVal - minVal)) * float64(drawArea.Dy()-1))
 				point := image.Pt(drawArea.Min.X+(j*self.HorizontalScale), drawArea.Max.Y-1-height)
 				if point.In(drawArea) {
 					buf.SetCell(
@@ -218,7 +217,7 @@ func (self *Plot) renderDot(buf *Buffer, drawArea image.Rectangle, minVal, maxVa
 		for i, line := range self.Data {
 			for j := 0; j < len(line) && j*self.HorizontalScale < drawArea.Dx(); j++ {
 				val := line[j]
-				height := int(((val - minVal) / maxVal) * float64(drawArea.Dy()-1))
+				height := int(((val - minVal) / (maxVal - minVal)) * float64(drawArea.Dy()-1))
 				buf.SetCell(
 					NewCell(self.DotMarkerRune, NewStyle(SelectColor(self.LineColors, i))),
 					image.Pt(drawArea.Min.X+(j*self.HorizontalScale), drawArea.Max.Y-1-height),
@@ -269,6 +268,7 @@ func (self *Plot) plotAxes(buf *Buffer, minVal, maxVal float64) {
 		x += (len(label) + xAxisLabelsGap) * self.HorizontalScale
 	}
 	// draw y axis labels
+	// TODO:   check self.PlotType to either use minVal or not
 	verticalScale := (maxVal - minVal) / float64(self.Inner.Dy()-xAxisLabelsHeight-1)
 	for i := 0; i*(yAxisLabelsGap+1) < self.Inner.Dy()-1; i++ {
 		buf.SetString(
