@@ -9,8 +9,8 @@ import (
 	"math/rand"
 	"time"
 
-	ui "github.com/reaalkhalil/termui/v3"
-	"github.com/reaalkhalil/termui/v3/widgets"
+	ui "github.com/reaalkhalil/termui"
+	"github.com/reaalkhalil/termui/widgets"
 )
 
 var run = true

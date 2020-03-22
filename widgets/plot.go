@@ -9,7 +9,7 @@ import (
 	"image"
 
 	candles "github.com/reaalkhalil/cb-candles"
-	. "github.com/reaalkhalil/termui/v3"
+	. "github.com/reaalkhalil/termui"
 )
 
 // Plot has two modes: line(default) and scatter.

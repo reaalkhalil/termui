@@ -6,7 +6,7 @@ import (
 	"image"
 	"log"
 
-	ui "github.com/reaalkhalil/termui/v3"
+	ui "github.com/reaalkhalil/termui"
 )
 
 func main() {

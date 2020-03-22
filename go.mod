@@ -1,4 +1,4 @@
-module github.com/reaalkhalil/termui/v3
+module github.com/reaalkhalil/termui
 
 go 1.14
 

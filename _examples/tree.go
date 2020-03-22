@@ -5,8 +5,8 @@ package main
 import (
 	"log"
 
-	ui "github.com/reaalkhalil/termui/v3"
-	"github.com/reaalkhalil/termui/v3/widgets"
+	ui "github.com/reaalkhalil/termui"
+	"github.com/reaalkhalil/termui/widgets"
 )
 
 type nodeValue string
