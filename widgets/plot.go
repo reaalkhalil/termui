@@ -6,10 +6,11 @@ package widgets
 
 import (
 	"fmt"
-	candles "github.com/reaalkhalil/cb-candles"
-	. "github.com/reaalkhalil/termui"
 	"image"
 	"math"
+
+	candles "github.com/reaalkhalil/cb-candles"
+	. "github.com/reaalkhalil/termui"
 )
 
 // Plot has two modes: line(default) and scatter.
@@ -197,7 +198,7 @@ func (self *Plot) renderDot(buf *Buffer, drawArea image.Rectangle, minVal, maxVa
 
 			for cy := drawArea.Min.Y - 1; cy < drawArea.Max.Y; cy++ {
 				color := ColorRed
-				if c.Close > c.Open {
+				if c.Close >= c.Open {
 					color = ColorGreen
 				}
 
