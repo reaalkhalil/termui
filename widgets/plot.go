@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"image"
 	"math"
+	"time"
 
-	candles "github.com/reaalkhalil/cb-candles"
 	. "github.com/reaalkhalil/termui"
 )
 
@@ -168,13 +168,22 @@ const (
 	CSNothing          = ' '
 )
 
+type Candle struct {
+	Time   time.Time `json:"time"`
+	Low    float64   `json:"low"`
+	High   float64   `json:"high"`
+	Open   float64   `json:"open"`
+	Close  float64   `json:"close"`
+	Volume float64   `json:"volume"`
+}
+
 func (self *Plot) renderDot(buf *Buffer, drawArea image.Rectangle, minVal, maxVal float64) {
 	switch self.PlotType {
 	case CandleStickPlot:
-		var cc []candles.Candle
+		var cc []Candle
 		for i, d := range self.Data {
 			if len(cc) == 0 {
-				cc = make([]candles.Candle, len(d))
+				cc = make([]Candle, len(d))
 			}
 			for j, n := range d {
 				switch i {
